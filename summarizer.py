@@ -1,8 +1,21 @@
 import os
 import logging
 from transformers import T5Tokenizer, T5ForConditionalGeneration
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+try:
+    from mistralai import Mistral
+    MistralClient = Mistral
+    ChatMessage = None  # New API doesn't use ChatMessage class
+except ImportError:
+    try:
+        from mistralai.client import MistralClient
+        try:
+            from mistralai.models.chat_completion import ChatMessage
+        except ImportError:
+            ChatMessage = None
+    except ImportError:
+        print("Warning: Mistral AI library not found")
+        MistralClient = None
+        ChatMessage = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,8 +24,12 @@ logger = logging.getLogger(__name__)
 # --- Mistral Summarizer ---
 MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
 mistral_client = None
-if MISTRAL_API_KEY:
-    mistral_client = MistralClient(api_key=MISTRAL_API_KEY)
+if MistralClient and MISTRAL_API_KEY:
+    try:
+        mistral_client = MistralClient(api_key=MISTRAL_API_KEY)
+    except Exception as e:
+        logger.warning(f"Failed to initialize Mistral client: {e}")
+        mistral_client = None
 
 async def summarize_with_mistral(text: str) -> str:
     """Summarizes text using the Mistral API."""
@@ -24,12 +41,36 @@ async def summarize_with_mistral(text: str) -> str:
     prompt = f"Summarize the following text in a concise manner, keeping the essential information:\n\n{text}"
     
     try:
-        chat_response = mistral_client.chat(
-            model="mistral-small-latest",
-            messages=[ChatMessage(role="user", content=prompt)]
-        )
-        if chat_response.choices:
-            return chat_response.choices[0].message.content
+        # Try different API call methods based on the client type
+        chat_response = None
+        
+        # Method 1: Try chat.complete (newer API)
+        try:
+            if hasattr(mistral_client, 'chat') and hasattr(mistral_client.chat, 'complete'):
+                chat_response = mistral_client.chat.complete(
+                    model="mistral-small-latest",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+        except Exception:
+            pass
+        
+        # Method 2: Try direct chat call
+        if not chat_response:
+            try:
+                chat_response = mistral_client.chat(
+                    model="mistral-small-latest",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+            except Exception:
+                pass
+        
+        # Process response
+        if chat_response:
+            if hasattr(chat_response, 'choices') and chat_response.choices:
+                return chat_response.choices[0].message.content
+            elif hasattr(chat_response, 'content'):
+                return chat_response.content
+        
         return text
     except Exception as e:
         logger.error(f"Error during Mistral summarization: {e}")

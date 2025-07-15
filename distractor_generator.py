@@ -1,6 +1,20 @@
 import logging
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+try:
+    from mistralai import Mistral
+    MistralClient = Mistral
+    ChatMessage = None  # New API doesn't use ChatMessage class
+except ImportError:
+    try:
+        from mistralai.client import MistralClient
+        try:
+            from mistralai.models.chat_completion import ChatMessage
+        except ImportError:
+            ChatMessage = None
+    except ImportError:
+        print("Warning: Mistral AI library not found")
+        MistralClient = None
+        ChatMessage = None
+
 import random
 from config import MISTRAL_API_KEY # Import from config
 
@@ -9,10 +23,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize Mistral client
-# MISTRAL_API_KEY is now imported from config
 client = None
-if MISTRAL_API_KEY:
-    client = MistralClient(api_key=MISTRAL_API_KEY)
+if MistralClient and MISTRAL_API_KEY:
+    try:
+        client = MistralClient(api_key=MISTRAL_API_KEY)
+    except Exception as e:
+        logger.warning(f"Failed to initialize Mistral client: {e}")
+        client = None
 else:
     logger.warning("MISTRAL_API_KEY not set. Distractor generation will use dummy fallbacks.")
 
@@ -38,24 +55,45 @@ async def generate_distractors(context: str, correct_answer: str) -> list:
     """
     
     try:
-        chat_response = client.chat(
-            model="mistral-small-latest",
-            messages=[ChatMessage(role="user", content=prompt)],
-            temperature=0.7,
-        )
+        # Try different API call methods based on the client type
+        chat_response = None
         
-        if chat_response.choices:
-            response_text = chat_response.choices[0].message.content.strip()
-            
-            # Attempt to parse the list from the response
+        # Method 1: Try chat.complete (newer API)
+        try:
+            if hasattr(client, 'chat') and hasattr(client.chat, 'complete'):
+                chat_response = client.chat.complete(
+                    model="mistral-small-latest",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                )
+        except Exception:
+            pass
+        
+        # Method 2: Try direct chat call
+        if not chat_response:
             try:
-                # The model might return a string representation of a list
-                distractors = eval(response_text)
-                if isinstance(distractors, list) and len(distractors) == 3:
-                    logger.info(f"Successfully generated distractors for '{correct_answer}'")
-                    return distractors
-            except:
-                pass # Fallback if eval fails
+                chat_response = client.chat(
+                    model="mistral-small-latest",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                )
+            except Exception:
+                pass
+        
+        # Process response
+        if chat_response:
+            if hasattr(chat_response, 'choices') and chat_response.choices:
+                response_text = chat_response.choices[0].message.content.strip()
+                
+                # Attempt to parse the list from the response
+                try:
+                    # The model might return a string representation of a list
+                    distractors = eval(response_text)
+                    if isinstance(distractors, list) and len(distractors) == 3:
+                        logger.info(f"Successfully generated distractors for '{correct_answer}'")
+                        return distractors
+                except:
+                    pass # Fallback if eval fails
 
     except Exception as e:
         logger.error(f"Error generating distractors with Mistral for '{correct_answer}': {e}")

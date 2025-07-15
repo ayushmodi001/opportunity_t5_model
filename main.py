@@ -67,15 +67,12 @@ async def generate_mcqs_endpoint(
                 logger.warning(f"No answers extracted for {topic}. Skipping.")
                 continue
 
-            # 4. Generate Questions
-            questions = await generate_questions(context, answers)
-            logger.info(f"Generated questions for {topic}: {questions}")
+            # 4. Generate Questions (targeting 10 questions)
+            questions = await generate_questions(context, answers, target_questions=10)
+            logger.info(f"Generated {len(questions)} questions for {topic}")
 
             # 5. Generate Distractors and format MCQs
-            for i, q in enumerate(questions):
-                if i >= 10: # Limit to 10 MCQs
-                    break
-                
+            for q in questions:
                 correct_answer = q["answer"]
                 distractors = await generate_distractors(context, correct_answer)
                 

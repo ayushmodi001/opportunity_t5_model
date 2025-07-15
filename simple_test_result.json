@@ -1,0 +1,14 @@
+{
+  "questions": [
+    {
+      "topic": "Python programming",
+      "question": "What is Python?",
+      "correct_answer": "Python",
+      "distractors": [
+        "Java",
+        "C++",
+        "JavaScript"
+      ]
+    }
+  ]
+}

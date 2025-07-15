@@ -1,13 +1,10 @@
-fastapi==0.109.2
-uvicorn==0.27.1
-python-dotenv==1.0.1
-mistralai==0.1.2
-transformers==4.38.1
-torch==2.2.0
-onnxruntime==1.17.1
-optimum==1.17.1
-spacy==3.7.4
-yake==0.4.8
-en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
-onnx
-protobuf==4.25.3
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+python-dotenv>=1.0.0
+mistralai>=0.4.0
+transformers>=4.30.0
+torch>=2.0.0
+spacy>=3.6.0
+yake>=0.4.8
+requests>=2.28.0
+pydantic>=2.0.0
