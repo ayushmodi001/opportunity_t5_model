@@ -18,6 +18,6 @@ You can find the updated repository and model files on the Hugging Face Hub:
 
 Deployed Model using the Hugging Face Space:
 
-* **Hugging Face Space:** 🚀 [Technical MCQ Generator](https://huggingface.co/spaces/Ayush472/Technical-MCQ-Generator)
+* **Hugging Face Space:** 🚀 [https://huggingface.co/spaces/Ayush472/opportunity_t5_model)
 
 Thank you for your interest!
